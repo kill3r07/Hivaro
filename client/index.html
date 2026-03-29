@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hivaro - Chat Application</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#5865F2">
+    <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen hidden">
+        <div class="loading-content">
+            <div class="logo-spinner">
+                <svg viewBox="0 0 100 100" class="spinner-logo">
+                    <defs>
+                        <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+                        </linearGradient>
+                    </defs>
+                    <circle cx="50" cy="50" r="45" fill="none" stroke="url(#logoGradient)" stroke-width="8"/>
+                    <path d="M35 40 L50 55 L65 40" stroke="url(#logoGradient)" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M35 60 L50 75 L65 60" stroke="url(#logoGradient)" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+            <div class="loading-text">Hivaro</div>
+            <div class="loading-tips" id="loading-tips">Connecting to server...</div>
+            <div class="loading-bar">
+                <div class="loading-progress"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auth Screen -->
+    <div id="auth-screen" class="auth-screen">
+        <div class="auth-container">
+            <div class="auth-logo">
+                <svg viewBox="0 0 100 100" class="auth-logo-svg">
+                    <defs>
+                        <linearGradient id="authGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+                        </linearGradient>
+                    </defs>
+                    <circle cx="50" cy="50" r="45" fill="none" stroke="url(#authGradient)" stroke-width="8"/>
+                    <path d="M35 40 L50 55 L65 40" stroke="url(#authGradient)" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M35 60 L50 75 L65 60" stroke="url(#authGradient)" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <h1>Hivaro</h1>
+                <p>Welcome back!</p>
+            </div>
+            
+            <div class="auth-tabs">
+                <button class="auth-tab active" data-tab="login">Login</button>
+                <button class="auth-tab" data-tab="register">Register</button>
+            </div>
+            
+            <form id="login-form" class="auth-form">
+                <div class="form-group">
+                    <label for="login-username">Username</label>
+                    <input type="text" id="login-username" required maxlength="20">
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Password</label>
+                    <input type="password" id="login-password" required minlength="8" maxlength="20">
+                    <span class="password-toggle" onclick="togglePassword('login-password')">👁️</span>
+                </div>
+                <button type="submit" class="auth-button">Log In</button>
+                <div class="auth-error" id="login-error"></div>
+            </form>
+            
+            <form id="register-form" class="auth-form hidden">
+                <div class="form-group">
+                    <label for="register-username">Username</label>
+                    <input type="text" id="register-username" required maxlength="20">
+                </div>
+                <div class="form-group">
+                    <label for="register-password">Password (8-20 characters)</label>
+                    <input type="password" id="register-password" required minlength="8" maxlength="20">
+                    <span class="password-toggle" onclick="togglePassword('register-password')">👁️</span>
+                </div>
+                <button type="submit" class="auth-button">Create Account</button>
+                <div class="auth-error" id="register-error"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="app" class="app hidden">
+        <!-- Server List (Left Sidebar) -->
+        <div class="server-sidebar">
+            <div class="server-list" id="server-list">
+                <div class="server-item home-server active" data-server="home">
+                    <div class="server-icon">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+                        </svg>
+                    </div>
+                    <div class="server-tooltip">Home</div>
+                </div>
+                <div class="server-divider"></div>
+                <div id="user-servers"></div>
+                <div class="server-item add-server" id="add-server-btn">
+                    <div class="server-icon">+</div>
+                    <div class="server-tooltip">Add Server</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Channel List -->
+        <div class="channel-sidebar">
+            <div class="channel-header" id="channel-header">
+                <h3>Direct Messages</h3>
+            </div>
+            <div class="channel-list" id="channel-list">
+                <div class="dm-category">Friends</div>
+                <div id="friends-list"></div>
+                <div class="dm-category" id="community-header" style="display:none;">Community</div>
+                <div id="community-channels" style="display:none;"></div>
+            </div>
+            
+            <!-- User Panel -->
+            <div class="user-panel">
+                <div class="user-avatar-container">
+                    <img src="" alt="Avatar" class="user-avatar" id="user-avatar">
+                    <div class="status-indicator" id="user-status"></div>
+                </div>
+                <div class="user-info">
+                    <div class="user-name" id="user-name"></div>
+                    <div class="user-tag" id="user-tag"></div>
+                </div>
+                <div class="user-actions">
+                    <button class="user-btn" id="settings-btn" title="Settings">⚙️</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="chat-header" id="chat-header">
+                <div class="channel-info">
+                    <span class="channel-icon">#</span>
+                    <span class="channel-name" id="current-channel-name">general</span>
+                </div>
+                <div class="header-actions">
+                    <button class="header-btn" id="members-toggle">👥</button>
+                    <button class="header-btn" id="search-btn">🔍</button>
+                </div>
+            </div>
+            
+            <div class="chat-container">
+                <div class="messages-container" id="messages-container">
+                    <div class="welcome-message">
+                        <h2>Welcome to Hivaro!</h2>
+                        <p>This is the beginning of your chat history.</p>
+                    </div>
+                </div>
+                
+                <div class="typing-indicator" id="typing-indicator"></div>
+                
+                <div class="message-input-container">
+                    <div class="message-input-wrapper">
+                        <button class="input-btn" id="emoji-btn">😊</button>
+                        <input type="text" class="message-input" id="message-input" placeholder="Message #general">
+                        <button class="input-btn" id="attach-btn">📎</button>
+                        <button class="send-btn" id="send-btn">➤</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Members List -->
+            <div class="members-sidebar" id="members-sidebar">
+                <div class="members-header">Members</div>
+                <div class="members-list" id="members-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal hidden">
+        <div class="modal-content settings-content">
+            <div class="settings-sidebar">
+                <div class="settings-nav">
+                    <button class="settings-nav-item active" data-section="profile">Profile</button>
+                    <button class="settings-nav-item" data-section="appearance">Appearance</button>
+                    <button class="settings-nav-item" data-section="language">Language</button>
+                    <button class="settings-nav-item" data-section="account">Account</button>
+                    <button class="settings-nav-item admin-only hidden" data-section="admin">Admin Panel</button>
+                </div>
+            </div>
+            <div class="settings-main">
+                <div class="settings-header">
+                    <h2 id="settings-title">Profile</h2>
+                    <button class="close-btn" id="close-settings">×</button>
+                </div>
+                
+                <div class="settings-section" id="section-profile">
+                    <div class="profile-editor">
+                        <div class="banner-preview" id="banner-preview"></div>
+                        <div class="avatar-preview-container">
+                            <img src="" alt="Avatar" class="avatar-preview" id="avatar-preview">
+                            <button class="change-avatar-btn">Change Avatar</button>
+                            <input type="file" id="avatar-upload" accept="image/*" hidden>
+                        </div>
+                        <div class="profile-fields">
+                            <div class="form-group">
+                                <label>Display Name</label>
+                                <input type="text" id="display-name" maxlength="100">
+                            </div>
+                            <div class="form-group">
+                                <label>Custom Status</label>
+                                <input type="text" id="custom-status" maxlength="100" placeholder="What's on your mind?">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="settings-section hidden" id="section-appearance">
+                    <h3>Theme</h3>
+                    <div class="theme-options">
+                        <div class="theme-option" data-theme="gradient-purple">
+                            <div class="theme-preview gradient-purple"></div>
+                            <span>Purple Gradient</span>
+                        </div>
+                        <div class="theme-option" data-theme="gradient-blue">
+                            <div class="theme-preview gradient-blue"></div>
+                            <span>Blue Gradient</span>
+                        </div>
+                        <div class="theme-option" data-theme="gradient-pink">
+                            <div class="theme-preview gradient-pink"></div>
+                            <span>Pink Gradient</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="settings-section hidden" id="section-language">
+                    <h3>Language</h3>
+                    <div class="language-options">
+                        <button class="language-btn active" data-lang="en">🇺🇸 English</button>
+                        <button class="language-btn" data-lang="pl">🇵🇱 Polski</button>
+                    </div>
+                </div>
+                
+                <div class="settings-section hidden" id="section-account">
+                    <h3>Change Password</h3>
+                    <div class="form-group">
+                        <label>Current Password</label>
+                        <input type="password" id="current-password">
+                    </div>
+                    <div class="form-group">
+                        <label>New Password (8-20 characters)</label>
+                        <input type="password" id="new-password" minlength="8" maxlength="20">
+                    </div>
+                    <button class="btn-primary" id="change-password-btn">Change Password</button>
+                    
+                    <div class="danger-zone">
+                        <h3>Danger Zone</h3>
+                        <button class="btn-danger" id="logout-btn">Log Out</button>
+                    </div>
+                </div>
+                
+                <div class="settings-section hidden" id="section-admin">
+                    <h3>Administration</h3>
+                    <div class="admin-stats" id="admin-stats"></div>
+                    <div class="admin-actions">
+                        <button class="btn-primary" id="view-users-btn">View All Users</button>
+                        <button class="btn-primary" id="upload-emoji-btn">Upload Global Emoji</button>
+                        <button class="btn-secondary" id="broadcast-btn">Send Broadcast</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Server Modal -->
+    <div id="create-server-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2>Create Your Server</h2>
+            <div class="form-group">
+                <label>Server Name</label>
+                <input type="text" id="server-name" placeholder="My Awesome Server">
+            </div>
+            <div class="modal-actions">
+                <button class="btn-secondary" id="cancel-server">Cancel</button>
+                <button class="btn-primary" id="create-server-btn">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Emoji Picker -->
+    <div id="emoji-picker" class="emoji-picker hidden">
+        <div class="emoji-search">
+            <input type="text" placeholder="Search emojis...">
+        </div>
+        <div class="emoji-list" id="emoji-list"></div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/chat.js"></script>
+    <script src="js/servers.js"></script>
+    <script src="js/settings.js"></script>
+</body>
+</html>

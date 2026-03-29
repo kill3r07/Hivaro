@@ -1,0 +1,16 @@
+{
+  "name": "Hivaro Chat",
+  "short_name": "Hivaro",
+  "description": "A Discord-like chat application",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#36393F",
+  "theme_color": "#5865F2",
+  "icons": [
+    {
+      "src": "assets/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
